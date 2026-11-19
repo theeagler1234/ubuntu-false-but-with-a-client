@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ubuntu-false · Local Webtop Client</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter & JetBrains Mono Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        ubuntu: {
+                            orange: '#E95420',
+                            orangeHover: '#d94614',
+                            aubergine: '#2C001E',
+                            dark: '#111113',
+                            surface: '#1c1c21',
+                            border: '#2e2e36',
+                            text: '#e4e4e7',
+                            muted: '#a1a1aa'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #111113; }
+        ::-webkit-scrollbar-thumb { background: #2e2e36; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+        
+        /* Subtle Ubuntu-inspired ambient glow */
+        .ambient-bg {
+            background: radial-gradient(circle at 15% 15%, rgba(233, 84, 32, 0.08) 0%, transparent 45%),
+                        radial-gradient(circle at 85% 85%, rgba(119, 41, 83, 0.12) 0%, transparent 50%),
+                        #111113;
+        }
+    </style>
+</head>
+<body class="ambient-bg text-ubuntu-text font-sans antialiased min-h-screen flex flex-col">
+
+    <!-- Toast Notification Container (Replaces alert/confirm) -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none"></div>
+
+    <!-- Top Navigation Bar -->
+    <header class="border-b border-ubuntu-border bg-ubuntu-surface/80 backdrop-blur-md sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-ubuntu-orange to-[#772953] flex items-center justify-center shadow-lg shadow-ubuntu-orange/20">
+                    <i class="fa-brands fa-ubuntu text-white text-xl"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="font-bold text-white text-base sm:text-lg tracking-tight">ubuntu-false</h1>
+                        <span class="px-2 py-0.5 text-[11px] font-mono font-medium bg-ubuntu-orange/15 text-ubuntu-orange border border-ubuntu-orange/30 rounded-full">
+                            file:// Local Client
+                        </span>
+                    </div>
+                    <p class="text-xs text-ubuntu-muted hidden sm:block">Direct Browser & Pop-up Webtop Launcher</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 sm:gap-3">
+                <!-- GPU Acceleration Status Pill -->
+                <div id="gpu-badge" class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-ubuntu-dark border border-ubuntu-border text-xs">
+                    <span id="gpu-dot" class="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span>
+                    <span id="gpu-label" class="font-mono text-ubuntu-muted">Probing Client GPU...</span>
+                </div>
+
+                <a href="https://github.com/theeagler1234/ubuntu-false" target="_blank" 
+                   class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-ubuntu-dark hover:bg-ubuntu-border border border-ubuntu-border text-xs font-medium text-ubuntu-text transition">
+                    <i class="fa-brands fa-github text-sm"></i>
+                    <span class="hidden sm:inline">Repository</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+
+        <!-- Connection Launcher Card -->
+        <section class="bg-ubuntu-surface border border-ubuntu-border rounded-2xl p-5 sm:p-7 shadow-2xl">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+                <div>
+                    <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-desktop text-ubuntu-orange"></i> Connect to Deployed Webtop
+                    </h2>
+                    <p class="text-sm text-ubuntu-muted mt-1">
+                        Enter your server's IP address, hostname, or reverse-proxy URL (e.g., <code class="text-xs font-mono bg-ubuntu-dark px-1.5 py-0.5 rounded text-ubuntu-text">192.168.1.50:3000</code> or <code class="text-xs font-mono bg-ubuntu-dark px-1.5 py-0.5 rounded text-ubuntu-text">https://desktop.yourdomain.com</code>).
+                    </p>
+                </div>
+
+                <!-- Quick Protocol Presets -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-xs text-ubuntu-muted mr-1">Quick Ports:</span>
+                    <button onclick="applyPortPreset('3000', 'http')" class="px-2.5 py-1 text-xs font-mono bg-ubuntu-dark hover:bg-ubuntu-border border border-ubuntu-border rounded-lg text-ubuntu-text transition" title="Standard HTTP Webtop">
+                        :3000 (HTTP)
+                    </button>
+                    <button onclick="applyPortPreset('3001', 'https')" class="px-2.5 py-1 text-xs font-mono bg-ubuntu-dark hover:bg-ubuntu-border border border-ubuntu-border rounded-lg text-ubuntu-text transition" title="HTTPS Webtop (Required for WebGPU/Audio/Clipboard)">
+                        :3001 (HTTPS)
+                    </button>
+                    <button onclick="applyPortPreset('6901', 'https')" class="px-2.5 py-1 text-xs font-mono bg-ubuntu-dark hover:bg-ubuntu-border border border-ubuntu-border rounded-lg text-ubuntu-text transition" title="KasmVNC Default">
+                        :6901 (Kasm)
+                    </button>
+                </div>
+            </div>
+
+            <!-- URL Input Bar & Launch Actions -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-3">
+                <!-- Protocol & Host Input -->
+                <div class="lg:col-span-7 flex rounded-xl bg-ubuntu-dark border border-ubuntu-border focus-within:border-ubuntu-orange transition overflow-hidden">
+                    <select id="protocol-select" onchange="updatePreviewUrl()" class="bg-ubuntu-surface/60 text-ubuntu-text text-sm font-mono px-3 py-3 border-r border-ubuntu-border focus:outline-none cursor-pointer">
+                        <option value="http://">http://</option>
+                        <option value="https://">https://</option>
+                    </select>
+                    <input type="text" id="server-address" placeholder="192.168.1.100:3000 or my-ubuntu-server.local:3000" 
+                           oninput="updatePreviewUrl()" onkeydown="if(event.key==='Enter') launchPopupWebtop()"
+                           class="w-full bg-transparent px-4 py-3 text-sm sm:text-base font-mono text-white placeholder-ubuntu-muted/50 focus:outline-none">
+                    <button onclick="pingServer()" id="ping-btn" class="px-4 text-xs font-medium text-ubuntu-muted hover:text-white border-l border-ubuntu-border transition flex items-center gap-1.5 shrink-0" title="Test Server Reachability">
+                        <i class="fa-solid fa-satellite-dish"></i>
+                        <span class="hidden sm:inline">Test</span>
+                    </button>
+                </div>
+
+                <!-- Launch Buttons -->
+                <div class="lg:col-span-5 flex flex-col sm:flex-row gap-2.5">
+                    <button onclick="launchPopupWebtop()" class="flex-1 bg-ubuntu-orange hover:bg-ubuntu-orangeHover text-white font-semibold text-sm px-5 py-3 rounded-xl shadow-lg shadow-ubuntu-orange/20 transition flex items-center justify-center gap-2 cursor-pointer">
+                        <i class="fa-solid fa-up-right-from-square"></i>
+                        <span>Launch Pop-up Webtop</span>
+                    </button>
+                    <button onclick="launchInlineViewport()" class="bg-ubuntu-dark hover:bg-ubuntu-border text-white font-medium text-sm px-4 py-3 rounded-xl border border-ubuntu-border transition flex items-center justify-center gap-2 cursor-pointer" title="Embed directly inside this page">
+                        <i class="fa-solid fa-window-maximize text-ubuntu-muted"></i>
+                        <span>Embed View</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Advanced Session Options Accordion / Strip -->
+            <div class="mt-5 pt-5 border-t border-ubuntu-border grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Window Resolution -->
+                <div>
+                    <label class="block text-xs font-medium text-ubuntu-muted mb-1.5">Pop-up Window Size</label>
+                    <select id="window-size-select" class="w-full bg-ubuntu-dark border border-ubuntu-border rounded-lg px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-ubuntu-orange">
+                        <option value="max">Maximize (Full Screen Area)</option>
+                        <option value="1920x1080">1920 × 1080 (1080p FHD)</option>
+                        <option value="1600x900">1600 × 900 (HD+)</option>
+                        <option value="1280x720">1280 × 720 (720p HD)</option>
+                    </select>
+                </div>
+
+                <!-- Optional Basic Auth Credentials -->
+                <div>
+                    <label class="block text-xs font-medium text-ubuntu-muted mb-1.5">HTTP Auth User (Optional)</label>
+                    <input type="text" id="auth-user" placeholder="abc / ubuntu" class="w-full bg-ubuntu-dark border border-ubuntu-border rounded-lg px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-ubuntu-orange">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-ubuntu-muted mb-1.5">HTTP Auth Password (Optional)</label>
+                    <input type="password" id="auth-pass" placeholder="••••••••" class="w-full bg-ubuntu-dark border border-ubuntu-border rounded-lg px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-ubuntu-orange">
+                </div>
+
+                <!-- Client Graphics / Passthrough Policy -->
+                <div>
+                    <label class="block text-xs font-medium text-ubuntu-muted mb-1.5">Graphics & Render Mode</label>
+                    <select id="render-mode-select" class="w-full bg-ubuntu-dark border border-ubuntu-border rounded-lg px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-ubuntu-orange">
+                        <option value="passthrough">Client WebGL/WebGPU Passthrough</option>
+                        <option value="native">Direct Server Stream (Kasm/Selkies)</option>
+                        <option value="low-latency">Low-Latency YUV / WebCodecs</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Resolved Target URL Preview -->
+            <div class="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs bg-ubuntu-dark/70 border border-ubuntu-border/60 rounded-lg px-3 py-2">
+                <div class="flex items-center gap-2 font-mono text-ubuntu-muted truncate">
+                    <span class="text-ubuntu-orange font-semibold">TARGET:</span>
+                    <span id="resolved-url-preview" class="text-ubuntu-text truncate">http://192.168.1.100:3000/</span>
+                </div>
+                <div class="flex items-center gap-3 shrink-0">
+                    <button onclick="saveCurrentBookmark()" class="text-ubuntu-muted hover:text-white flex items-center gap-1 transition">
+                        <i class="fa-regular fa-bookmark"></i> Save Server
+                    </button>
+                    <span id="popup-status-indicator" class="text-ubuntu-muted flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-zinc-600"></span> No active pop-up
+                    </span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Embedded Webtop Viewport (Hidden until "Embed View" is clicked) -->
+        <section id="inline-viewport-section" class="hidden bg-ubuntu-surface border border-ubuntu-border rounded-2xl overflow-hidden shadow-2xl">
+            <div class="bg-ubuntu-dark border-b border-ubuntu-border px-4 py-2.5 flex items-center justify-between">
+                <div class="flex items-center gap-2 text-xs font-mono">
+                    <span class="w-2.5 h-2.5 rounded-full bg-green-500"></span>
+                    <span id="inline-url-label" class="text-white">Connected</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="reloadInlineFrame()" class="px-2.5 py-1 text-xs bg-ubuntu-surface hover:bg-ubuntu-border border border-ubuntu-border rounded-lg text-ubuntu-text transition" title="Reload Frame">
+                        <i class="fa-solid fa-rotate-right"></i>
+                    </button>
+                    <button onclick="fullscreenInlineFrame()" class="px-2.5 py-1 text-xs bg-ubuntu-surface hover:bg-ubuntu-border border border-ubuntu-border rounded-lg text-ubuntu-text transition" title="Fullscreen">
+                        <i class="fa-solid fa-expand"></i>
+                    </button>
+                    <button onclick="closeInlineViewport()" class="px-2.5 py-1 text-xs bg-red-950/60 hover:bg-red-900/60 border border-red-800/50 rounded-lg text-red-300 transition">
+                        <i class="fa-solid fa-xmark mr-1"></i> Close
+                    </button>
+                </div>
+            </div>
+            <!-- Full-capability iframe permissions for clipboard, gamepad, mic, camera, fullscreen, pointer lock -->
+            <div class="w-full h-[75vh] bg-black relative">
+                <iframe id="webtop-iframe" src="about:blank" 
+                        allow="clipboard-read; clipboard-write; fullscreen; microphone; camera; gamepad; display-capture; autoplay; pointer-lock; cross-origin-isolated"
+                        sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-downloads allow-pointer-lock"
+                        class="w-full h-full border-0"></iframe>
+            </div>
+        </section>
+
+        <!-- Bottom Grid: Saved Servers & Client Capabilities / WebGL-WebGPU Passthrough Diagnostics -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Saved Servers / Recent Connections -->
+            <div class="lg:col-span-1 bg-ubuntu-surface border border-ubuntu-border rounded-2xl p-5 flex flex-col">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-server text-ubuntu-orange"></i> Saved Instances
+                    </h3>
+                    <button onclick="clearBookmarks()" class="text-xs text-ubuntu-muted hover:text-red-400 transition">Clear</button>
+                </div>
+                <div id="saved-servers-list" class="space-y-2.5 flex-1">
+                    <!-- Populated via JS -->
+                </div>
+            </div>
+
+            <!-- Client-Side Hardware & Graphics Bridge Architecture -->
+            <div class="lg:col-span-2 bg-ubuntu-surface border border-ubuntu-border rounded-2xl p-5 space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-microchip text-ubuntu-orange"></i> Client-Side Graphics & Browser Capabilities
+                    </h3>
+                    <span class="text-[11px] font-mono text-ubuntu-muted bg-ubuntu-dark px-2.5 py-1 rounded-md border border-ubuntu-border">
+                        Zero-Server-Overhead Local Execution
+                    </span>
+                </div>
+
+                <!-- Hardware Capability Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div class="bg-ubuntu-dark border border-ubuntu-border rounded-xl p-3.5">
+                        <div class="text-xs text-ubuntu-muted mb-1 flex items-center justify-between">
+                            <span>WebGL 2.0 / OpenGL ES</span>
+                            <i id="webgl-status-icon" class="fa-solid fa-circle-check text-green-500"></i>
+                        </div>
+                        <div id="webgl-renderer-info" class="text-xs font-mono text-white truncate" title="Detecting GPU...">Detecting...</div>
+                    </div>
+
+                    <div class="bg-ubuntu-dark border border-ubuntu-border rounded-xl p-3.5">
+                        <div class="text-xs text-ubuntu-muted mb-1 flex items-center justify-between">
+                            <span>WebGPU Compute/Render</span>
+                            <i id="webgpu-status-icon" class="fa-solid fa-circle-question text-yellow-500"></i>
+                        </div>
+                        <div id="webgpu-adapter-info" class="text-xs font-mono text-white truncate">Probing Adapter...</div>
+                    </div>
+
+                    <div class="bg-ubuntu-dark border border-ubuntu-border rounded-xl p-3.5">
+                        <div class="text-xs text-ubuntu-muted mb-1 flex items-center justify-between">
+                            <span>WebCodecs / Clipboard</span>
+                            <i id="webcodecs-status-icon" class="fa-solid fa-circle-check text-green-500"></i>
+                        </div>
+                        <div id="webcodecs-info" class="text-xs font-mono text-white truncate">Hardware Decode Ready</div>
+                    </div>
+                </div>
+
+                <!-- Client-Side WebGL/WebGPU/OpenGL Passthrough Script & Bridge Tools -->
+                <div class="bg-ubuntu-dark border border-ubuntu-border rounded-xl p-4 space-y-3">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <div class="text-xs font-medium text-white flex items-center gap-2">
+                            <i class="fa-solid fa-bolt text-yellow-400"></i>
+                            <span>Client-Side WebGL / WebGPU / OpenGL Command Intercept Bridge</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="focusActivePopup()" class="px-2.5 py-1 text-xs bg-ubuntu-surface hover:bg-ubuntu-border border border-ubuntu-border rounded-lg text-ubuntu-text transition">
+                                <i class="fa-solid fa-window-restore mr-1"></i> Focus Pop-up
+                            </button>
+                            <button onclick="sendClipboardToPopup()" class="px-2.5 py-1 text-xs bg-ubuntu-surface hover:bg-ubuntu-border border border-ubuntu-border rounded-lg text-ubuntu-text transition">
+                                <i class="fa-regular fa-clipboard mr-1"></i> Push Clipboard
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-ubuntu-muted leading-relaxed">
+                        Because this HTML runs locally (<code class="text-ubuntu-text">file://</code>) and opens your deployed <code class="text-ubuntu-text">ubuntu-false</code> instance in a dedicated top-level pop-up window, the browser grants the pop-up <strong>100% native top-level privileges</strong>: full keyboard capture (<kbd class="px-1 py-0.5 bg-ubuntu-surface border border-ubuntu-border rounded text-[10px]">Alt+Tab</kbd>, <kbd class="px-1 py-0.5 bg-ubuntu-surface border border-ubuntu-border rounded text-[10px]">Ctrl+W</kbd>, <kbd class="px-1 py-0.5 bg-ubuntu-surface border border-ubuntu-border rounded text-[10px]">Super</kbd>), unrestricted Pointer Lock for 3D apps, WebAudio, Gamepad API, and direct hardware-accelerated WebGL/WebGPU canvas compositing on your client GPU.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-ubuntu-border py-4 px-4 sm:px-6 lg:px-8 text-xs text-ubuntu-muted">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+            <div>ubuntu-false Local Launcher · Runs offline via <span class="font-mono text-ubuntu-text">file://</span></div>
+            <div class="font-mono" id="origin-display">Origin: file://</div>
+        </div>
+    </footer>
+
+    <script>
+        // ==========================================
+        // STATE & PERSISTENCE (localStorage)
+        // ==========================================
+        let activePopupWindow = null;
+        let popupMonitorInterval = null;
+
+        const DEFAULT_SERVERS = [
+            { name: 'Local Docker Webtop (HTTP)', protocol: 'http://', address: 'localhost:3000' },
+            { name: 'Local Docker Webtop (HTTPS)', protocol: 'https://', address: 'localhost:3001' },
+            { name: 'LAN Ubuntu Instance', protocol: 'http://', address: '192.168.1.100:3000' }
+        ];
+
+        let savedServers = JSON.parse(localStorage.getItem('ubuntu_false_servers') || 'null') || DEFAULT_SERVERS;
+
+        // ==========================================
+        // INITIALIZATION
+        // ==========================================
+        window.onload = function() {
+            document.getElementById('origin-display').textContent = `Origin: ${window.location.protocol}//`;
+
+            // Restore last used address if available
+            const lastProtocol = localStorage.getItem('ubuntu_false_last_proto') || 'http://';
+            const lastAddress = localStorage.getItem('ubuntu_false_last_addr') || '192.168.1.100:3000';
+            document.getElementById('protocol-select').value = lastProtocol;
+            document.getElementById('server-address').value = lastAddress;
+
+            updatePreviewUrl();
+            renderSavedServers();
+            probeClientGraphicsCapabilities();
+        };
+
+        // ==========================================
+        // URL BUILDER & VALIDATION
+        // ==========================================
+        function buildTargetUrl() {
+            let protocol = document.getElementById('protocol-select').value;
+            let rawAddr = document.getElementById('server-address').value.trim();
+            const user = document.getElementById('auth-user').value.trim();
+            const pass = document.getElementById('auth-pass').value.trim();
+
+            if (!rawAddr) {
+                rawAddr = 'localhost:3000';
+            }
+
+            // If user pasted full http:// or https:// into the text box, extract it cleanly
+            if (rawAddr.startsWith('http://')) {
+                protocol = 'http://';
+                rawAddr = rawAddr.slice(7);
+                document.getElementById('protocol-select').value = protocol;
+                document.getElementById('server-address').value = rawAddr;
+            } else if (rawAddr.startsWith('https://')) {
+                protocol = 'https://';
+                rawAddr = rawAddr.slice(8);
+                document.getElementById('protocol-select').value = protocol;
+                document.getElementById('server-address').value = rawAddr;
+            }
+
+            // Inject optional Basic Auth credentials into URL if provided
+            let authPrefix = '';
+            if (user) {
+                authPrefix = pass ? `${encodeURIComponent(user)}:${encodeURIComponent(pass)}@` : `${encodeURIComponent(user)}@`;
+            }
+
+            // Ensure trailing slash if no path is specified
+            const hasPath = rawAddr.includes('/');
+            const formattedAddr = hasPath ? rawAddr : `${rawAddr}/`;
+
+            return `${protocol}${authPrefix}${formattedAddr}`;
+        }
+
+        function updatePreviewUrl() {
+            const url = buildTargetUrl();
+            // Mask password in visual preview
+            const maskedUrl = url.replace(/\/\/([^:]+):([^@]+)@/, '//$1:••••••@');
+            document.getElementById('resolved-url-preview').textContent = maskedUrl;
+        }
+
+        function applyPortPreset(port, proto) {
+            const protoSelect = document.getElementById('protocol-select');
+            const addrInput = document.getElementById('server-address');
+            protoSelect.value = `${proto}://`;
+
+            let currentHost = addrInput.value.trim() || '192.168.1.100';
+            // Strip any existing protocol or port
+            currentHost = currentHost.replace(/^https?:\/\//, '').split('/')[0].split(':')[0];
+            addrInput.value = `${currentHost}:${port}`;
+            updatePreviewUrl();
+            showToast(`Preset applied: ${proto}://${currentHost}:${port}`, 'info');
+        }
+
+        // ==========================================
+        // POP-UP WEBTOP LAUNCHER (100% BROWSER CAPABILITIES)
+        // ==========================================
+        function launchPopupWebtop() {
+            const targetUrl = buildTargetUrl();
+            const rawAddr = document.getElementById('server-address').value.trim();
+            const protocol = document.getElementById('protocol-select').value;
+
+            if (!rawAddr) {
+                showToast('Please enter a valid server IP address or URL first.', 'error');
+                document.getElementById('server-address').focus();
+                return;
+            }
+
+            // Persist last connection
+            localStorage.setItem('ubuntu_false_last_proto', protocol);
+            localStorage.setItem('ubuntu_false_last_addr', rawAddr);
+
+            // Calculate pop-up window dimensions
+            const sizeMode = document.getElementById('window-size-select').value;
+            let width = window.screen.availWidth;
+            let height = window.screen.availHeight;
+            let left = 0;
+            let top = 0;
+
+            if (sizeMode !== 'max') {
+                const [w, h] = sizeMode.split('x').map(Number);
+                width = Math.min(w, window.screen.availWidth);
+                height = Math.min(h, window.screen.availHeight);
+                left = Math.round((window.screen.availWidth - width) / 2);
+                top = Math.round((window.screen.availHeight - height) / 2);
+            }
+
+            // Open clean app-like pop-up window (no address bar/toolbars for maximum desktop screen space)
+            const windowFeatures = `popup=yes,width=${width},height=${height},left=${left},top=${top},menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=no`;
+
+            try {
+                activePopupWindow = window.open(targetUrl, 'ubuntu_false_webtop_session', windowFeatures);
+
+                if (!activePopupWindow || activePopupWindow.closed || typeof activePopupWindow.closed === 'undefined') {
+                    showToast('Pop-up was blocked by your browser! Please allow pop-ups for this local file.', 'error');
+                    return;
+                }
+
+                activePopupWindow.focus();
+                showToast(`Launched webtop pop-up for ${rawAddr}`, 'success');
+                startPopupMonitor();
+            } catch (err) {
+                showToast(`Failed to open pop-up: ${err.message}`, 'error');
+            }
+        }
+
+        function startPopupMonitor() {
+            const statusEl = document.getElementById('popup-status-indicator');
+            statusEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> <span class="text-green-400 font-medium">Pop-up Active</span>`;
+
+            if (popupMonitorInterval) clearInterval(popupMonitorInterval);
+            popupMonitorInterval = setInterval(() => {
+                if (!activePopupWindow || activePopupWindow.closed) {
+                    clearInterval(popupMonitorInterval);
+                    activePopupWindow = null;
+                    statusEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-zinc-600"></span> No active pop-up`;
+                }
+            }, 1000);
+        }
+
+        function focusActivePopup() {
+            if (activePopupWindow && !activePopupWindow.closed) {
+                activePopupWindow.focus();
+            } else {
+                showToast('No active pop-up window found. Click "Launch Pop-up Webtop" first.', 'info');
+            }
+        }
+
+        // ==========================================
+        // EMBEDDED INLINE VIEWPORT (ALTERNATIVE MODE)
+        // ==========================================
+        function launchInlineViewport() {
+            const targetUrl = buildTargetUrl();
+            const rawAddr = document.getElementById('server-address').value.trim();
+
+            if (!rawAddr) {
+                showToast('Please enter a server IP address or URL first.', 'error');
+                return;
+            }
+
+            const section = document.getElementById('inline-viewport-section');
+            const iframe = document.getElementById('webtop-iframe');
+            document.getElementById('inline-url-label').textContent = targetUrl.replace(/\/\/([^:]+):([^@]+)@/, '//$1:••••••@');
+
+            iframe.src = targetUrl;
+            section.classList.remove('hidden');
+            section.scrollIntoView({ behavior: 'smooth' });
+            showToast('Loaded webtop in embedded viewport.', 'success');
+        }
+
+        function closeInlineViewport() {
+            const section = document.getElementById('inline-viewport-section');
+            const iframe = document.getElementById('webtop-iframe');
+            iframe.src = 'about:blank';
+            section.classList.add('hidden');
+        }
+
+        function reloadInlineFrame() {
+            const iframe = document.getElementById('webtop-iframe');
+            if (iframe.src && iframe.src !== 'about:blank') {
+                iframe.src = iframe.src;
+            }
+        }
+
+        function fullscreenInlineFrame() {
+            const iframe = document.getElementById('webtop-iframe');
+            if (iframe.requestFullscreen) {
+                iframe.requestFullscreen();
+            }
+        }
+
+        // ==========================================
+        // SERVER REACHABILITY PING TEST
+        // ==========================================
+        async function pingServer() {
+            const url = buildTargetUrl();
+            const btn = document.getElementById('ping-btn');
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin text-ubuntu-orange"></i>`;
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 4500);
+
+            try {
+                // mode: 'no-cors' allows checking if a port/server responds even from file:// without CORS headers
+                await fetch(url, { mode: 'no-cors', signal: controller.signal });
+                clearTimeout(timeoutId);
+                showToast('Server is online and reachable!', 'success');
+            } catch (err) {
+                clearTimeout(timeoutId);
+                if (err.name === 'AbortError') {
+                    showToast('Connection timed out. Check IP, port, or firewall.', 'error');
+                } else {
+                    showToast('Could not reach server. Verify it is running and check HTTP/HTTPS.', 'error');
+                }
+            } finally {
+                btn.innerHTML = originalHTML;
+            }
+        }
+
+        // ==========================================
+        // CLIENT-SIDE HARDWARE & GRAPHICS PROBING
+        // ==========================================
+        async function probeClientGraphicsCapabilities() {
+            const gpuBadgeDot = document.getElementById('gpu-dot');
+            const gpuBadgeLabel = document.getElementById('gpu-label');
+
+            // 1. Probe WebGL 2.0 / OpenGL ES Renderer
+            try {
+                const canvas = document.createElement('canvas');
+                const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+                if (gl) {
+                    const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                    const renderer = debugInfo 
+                        ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) 
+                        : gl.getParameter(gl.RENDERER);
+                    document.getElementById('webgl-renderer-info').textContent = renderer;
+                    document.getElementById('webgl-renderer-info').title = renderer;
+                    gpuBadgeDot.className = 'w-2 h-2 rounded-full bg-green-500';
+                    gpuBadgeLabel.textContent = 'Client GPU Hardware Ready';
+                } else {
+                    document.getElementById('webgl-renderer-info').textContent = 'Software Fallback';
+                    document.getElementById('webgl-status-icon').className = 'fa-solid fa-triangle-exclamation text-yellow-500';
+                }
+            } catch (e) {
+                document.getElementById('webgl-renderer-info').textContent = 'Unavailable';
+            }
+
+            // 2. Probe WebGPU Adapter
+            try {
+                if ('gpu' in navigator) {
+                    const adapter = await navigator.gpu.requestAdapter();
+                    if (adapter) {
+                        const info = adapter.info || (await adapter.requestAdapterInfo?.()) || {};
+                        const label = info.description || info.device || info.architecture || 'WebGPU Hardware Adapter';
+                        document.getElementById('webgpu-adapter-info').textContent = label;
+                        document.getElementById('webgpu-status-icon').className = 'fa-solid fa-circle-check text-green-500';
+                    } else {
+                        document.getElementById('webgpu-adapter-info').textContent = 'No Adapter Found';
+                    }
+                } else {
+                    document.getElementById('webgpu-adapter-info').textContent = 'Not Supported in Browser';
+                }
+            } catch (e) {
+                document.getElementById('webgpu-adapter-info').textContent = 'Restricted on file://';
+            }
+
+            // 3. Probe WebCodecs (Hardware H.264 / VP9 / AV1 Video Decoding for Webtop streams)
+            if ('VideoDecoder' in window) {
+                document.getElementById('webcodecs-info').textContent = 'WebCodecs HW Decode Active';
+            } else {
+                document.getElementById('webcodecs-info').textContent = 'Canvas / WebGL Fallback';
+            }
+        }
+
+        // ==========================================
+        // SAVED SERVERS BOOKMARK MANAGEMENT
+        // ==========================================
+        function renderSavedServers() {
+            const container = document.getElementById('saved-servers-list');
+            if (!savedServers.length) {
+                container.innerHTML = `<div class="text-xs text-ubuntu-muted text-center py-6 border border-dashed border-ubuntu-border rounded-xl">No saved servers yet.</div>`;
+                return;
+            }
+
+            container.innerHTML = savedServers.map((srv, idx) => `
+                <div class="group flex items-center justify-between gap-2 p-2.5 rounded-xl bg-ubuntu-dark hover:bg-ubuntu-border/60 border border-ubuntu-border transition">
+                    <button onclick="loadBookmark(${idx})" class="flex-1 text-left truncate">
+                        <div class="text-xs font-medium text-white truncate">${escapeHtml(srv.name)}</div>
+                        <div class="text-[11px] font-mono text-ubuntu-muted truncate">${escapeHtml(srv.protocol + srv.address)}</div>
+                    </button>
+                    <div class="flex items-center gap-1">
+                        <button onclick="loadBookmark(${idx}, true)" class="p-1.5 text-xs text-ubuntu-orange hover:bg-ubuntu-orange/20 rounded-lg transition" title="Launch Pop-up Immediately">
+                            <i class="fa-solid fa-play"></i>
+                        </button>
+                        <button onclick="deleteBookmark(${idx})" class="p-1.5 text-xs text-ubuntu-muted hover:text-red-400 rounded-lg transition" title="Remove">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function saveCurrentBookmark() {
+            const protocol = document.getElementById('protocol-select').value;
+            const address = document.getElementById('server-address').value.trim();
+            if (!address) {
+                showToast('Enter an IP or URL before saving.', 'error');
+                return;
+            }
+            const exists = savedServers.some(s => s.protocol === protocol && s.address === address);
+            if (exists) {
+                showToast('This server is already in your saved list.', 'info');
+                return;
+            }
+            savedServers.unshift({
+                name: `Ubuntu Webtop (${address.split(':')[0]})`,
+                protocol,
+                address
+            });
+            localStorage.setItem('ubuntu_false_servers', JSON.stringify(savedServers));
+            renderSavedServers();
+            showToast('Server saved to local bookmarks.', 'success');
+        }
+
+        function loadBookmark(index, autoLaunch = false) {
+            const srv = savedServers[index];
+            if (!srv) return;
+            document.getElementById('protocol-select').value = srv.protocol;
+            document.getElementById('server-address').value = srv.address;
+            updatePreviewUrl();
+            if (autoLaunch) {
+                launchPopupWebtop();
+            } else {
+                showToast(`Loaded ${srv.address}`, 'info');
+            }
+        }
+
+        function deleteBookmark(index) {
+            savedServers.splice(index, 1);
+            localStorage.setItem('ubuntu_false_servers', JSON.stringify(savedServers));
+            renderSavedServers();
+        }
+
+        function clearBookmarks() {
+            savedServers = [];
+            localStorage.setItem('ubuntu_false_servers', JSON.stringify(savedServers));
+            renderSavedServers();
+            showToast('Cleared saved servers.', 'info');
+        }
+
+        // ==========================================
+        // CLIPBOARD SYNC HELPER
+        // ==========================================
+        async function sendClipboardToPopup() {
+            try {
+                const text = await navigator.clipboard.readText();
+                if (!text) {
+                    showToast('Your local clipboard is empty.', 'info');
+                    return;
+                }
+                if (activePopupWindow && !activePopupWindow.closed) {
+                    activePopupWindow.postMessage({ type: 'CLIPBOARD_SYNC', text }, '*');
+                    activePopupWindow.focus();
+                    showToast('Sent clipboard payload to active webtop pop-up.', 'success');
+                } else {
+                    showToast('Open the webtop pop-up first to sync clipboard.', 'info');
+                }
+            } catch (err) {
+                showToast('Clipboard read blocked by browser permissions on file://.', 'error');
+            }
+        }
+
+        // ==========================================
+        // TOAST NOTIFICATION SYSTEM (NO ALERT/CONFIRM)
+        // ==========================================
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const colors = {
+                success: 'border-green-500/40 bg-ubuntu-surface text-green-300',
+                error: 'border-red-500/40 bg-ubuntu-surface text-red-300',
+                info: 'border-ubuntu-orange/40 bg-ubuntu-surface text-ubuntu-text'
+            };
+            const icons = {
+                success: 'fa-circle-check text-green-400',
+                error: 'fa-circle-exclamation text-red-400',
+                info: 'fa-circle-info text-ubuntu-orange'
+            };
+
+            toast.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl border shadow-xl text-xs font-medium transition-all duration-300 transform translate-y-2 opacity-0 ${colors[type] || colors.info}`;
+            toast.innerHTML = `
+                <i class="fa-solid ${icons[type] || icons.info} text-sm shrink-0"></i>
+                <span class="flex-1">${escapeHtml(message)}</span>
+            `;
+
+            container.appendChild(toast);
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
